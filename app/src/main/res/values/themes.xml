@@ -1,0 +1,9 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Base.Theme.Filedroid" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorControlNormal">?attr/colorOnPrimary</item>
+    </style>
+
+    <style name="Theme.Filedroid" parent="Base.Theme.Filedroid" />
+
+</resources>
