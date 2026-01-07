@@ -6,4 +6,20 @@
     <string name="cancel">Cancel</string>
     <string name="hint_new_file">path or file name</string>
     <string name="hint_new_directory">path or directory name</string>
+    <string name="select_all">Select All</string>
+    <string name="deselect_all">Deselect All</string>
+    <string name="delete">Delete</string>
+    <string name="are_you_sure">Are you sure?</string>
+    <string name="yes">Yes</string>
+
+    <plurals name="selected_items">
+        <item quantity="one">%s Item</item>
+        <item quantity="other">%s Items</item>
+    </plurals>
+
+    <plurals name="delete_selected_items">
+        <item quantity="one">You want to delete %s item?</item>
+        <item quantity="other">You want to delete %s items?</item>
+    </plurals>
+
 </resources>

@@ -1,6 +1,7 @@
 package br.com.andersondesouza.filedroid;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.DialogInterface;
@@ -22,6 +23,7 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.view.ActionMode;
 import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -31,17 +33,21 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 
+import br.com.andersondesouza.filedroid.action.CreateDirectoryAction;
+import br.com.andersondesouza.filedroid.action.CreateFileAction;
+import br.com.andersondesouza.filedroid.action.DeleteFileAction;
 import br.com.andersondesouza.filedroid.databinding.ActivityMainBinding;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ActionMode.Callback {
 
     private ActivityMainBinding binding;
-    private ExternalStorageViewModel viewModel;
+    private ActionMode actionMode;
+
+    private ExternalStorageViewModel externalStorageViewModel;
+    private ExternalStorageAdapter externalStorageAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,7 +73,8 @@ public class MainActivity extends AppCompatActivity {
         new WindowInsetsControllerCompat(window, decorView)
                 .setAppearanceLightStatusBars(false);
 
-        viewModel = new ViewModelProvider(this).get(ExternalStorageViewModel.class);
+        externalStorageViewModel = new ViewModelProvider(this).get(ExternalStorageViewModel.class);
+        externalStorageAdapter = new ExternalStorageAdapter();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
 
@@ -95,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_DENIED) {
 
             ActivityResultLauncher<String> launcher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), (state) -> {
                 if (state) {
@@ -106,12 +113,13 @@ public class MainActivity extends AppCompatActivity {
             });
 
             launcher.launch(Manifest.permission.POST_NOTIFICATIONS);
+
         }
 
         getOnBackPressedDispatcher().addCallback(new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                viewModel.updateCurrentDir(viewModel.getCurrentDir().getParentFile());
+                externalStorageViewModel.backToParent();
             }
         });
 
@@ -119,22 +127,28 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadFiles() {
 
-        ExternalStorageAdapter adapter = new ExternalStorageAdapter();
-        adapter.setOnItemClickListener(holder -> viewModel.updateCurrentDir(holder.getFile()));
+        externalStorageAdapter.setOnItemClickListener(holder -> externalStorageViewModel.updateCurrentDirectory(holder.getFile()));
+        externalStorageAdapter.setOnItemSelectedListener((selectedItems, itemChanged) -> {
+            if (actionMode == null) {
+                actionMode = startSupportActionMode(this);
+            } else {
+                actionMode.invalidate();
+            }
+        });
 
         binding.listView.setHasFixedSize(true);
         binding.listView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
-        binding.listView.setAdapter(adapter);
+        binding.listView.setAdapter(externalStorageAdapter);
 
-        viewModel.observeCurrentDir(this, file -> {
+        externalStorageViewModel.observeCurrentDirectory(this, file -> {
             File[] childs = file.listFiles();
             if (childs != null) {
-                adapter.submitList(Arrays.asList(childs));
+                externalStorageAdapter.submitList(Arrays.asList(childs));
             } else {
-                adapter.submitList(Collections.EMPTY_LIST);
+                externalStorageAdapter.submitList(Collections.EMPTY_LIST);
             }
 
-            if (!viewModel.getCurrentDir().equals(viewModel.getExternalStorage())) {
+            if (!externalStorageViewModel.isRoot()) {
                 getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             } else {
                 getSupportActionBar().setDisplayHomeAsUpEnabled(false);
@@ -156,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
 
         if (item.getItemId() == android.R.id.home) {
-            viewModel.updateCurrentDir(viewModel.getCurrentDir().getParentFile());
+            externalStorageViewModel.backToParent();
         }
 
         EditTextDialog editTextDialog = null;
@@ -168,7 +182,16 @@ public class MainActivity extends AppCompatActivity {
             editTextDialog.setOnEditTextDialogClickListener((dialog, editText, which) -> {
                 if (which == DialogInterface.BUTTON_POSITIVE) {
 
-                    viewModel.asyncCreateNewFile(editText.getText().toString());
+                    File currentDir = externalStorageViewModel.getCurrentDirectory();
+                    String text = editText.getText().toString();
+
+                    CreateFileAction fileAction = new CreateFileAction(currentDir, text);
+                    fileAction.setOnProgressListener((file, success, percent) -> {
+                        if (success) {
+                            externalStorageViewModel.updateCurrentDirectory();
+                        }
+                    });
+                    fileAction.start();
 
                 } else {
                     dialog.dismiss();
@@ -182,7 +205,16 @@ public class MainActivity extends AppCompatActivity {
             editTextDialog.setOnEditTextDialogClickListener((dialog, editText, which) -> {
                 if (which == DialogInterface.BUTTON_POSITIVE) {
 
-                    viewModel.asyncCreateNewDir(editText.getText().toString());
+                    File currentDir = externalStorageViewModel.getCurrentDirectory();
+                    String text = editText.getText().toString();
+
+                    CreateDirectoryAction fileAction = new CreateDirectoryAction(currentDir, text);
+                    fileAction.setOnProgressListener((file, success, percent) -> {
+                        if (success) {
+                            externalStorageViewModel.updateCurrentDirectory();
+                        }
+                    });
+                    fileAction.start();
 
                 } else {
                     dialog.dismiss();
@@ -197,4 +229,76 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
+    @Override
+    public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+        getMenuInflater().inflate(R.menu.activity_main_action_mode, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+
+        mode.setTitle(getResources()
+                .getQuantityString(R.plurals.selected_items,
+                        externalStorageAdapter.getSelectedItemCount(),
+                        externalStorageAdapter.getSelectedItemCount())
+        );
+
+        menu.findItem(R.id.select_all).setVisible(!externalStorageAdapter.areAllItemsSelected());
+        menu.findItem(R.id.deselect_all).setVisible(externalStorageAdapter.areAllItemsSelected());
+
+        if (externalStorageAdapter.hasNoSelectedItems()) {
+            actionMode.finish();
+        }
+
+        return true;
+
+    }
+
+    @Override
+    public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+
+        if (item.getItemId() == R.id.select_all) {
+            externalStorageAdapter.selectAll();
+            mode.invalidate();
+        } else if (item.getItemId() == R.id.deselect_all) {
+            externalStorageAdapter.deselectAll();
+            mode.invalidate();
+        } else if (item.getItemId() == R.id.delete) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.are_you_sure)
+                    .setMessage(
+                        getResources().getQuantityString(
+                            R.plurals.delete_selected_items,
+                            externalStorageAdapter.getSelectedItemCount(),
+                            externalStorageAdapter.getSelectedItemCount())
+                    )
+                    .setPositiveButton(R.string.yes, (dialog, which) -> {
+                        DeleteFileAction fileAction = new DeleteFileAction(externalStorageAdapter.getSelectedItems());
+                        fileAction.setOnProgressListener((file, success, percent) -> {
+                            externalStorageViewModel.updateCurrentDirectory();
+                        });
+                        fileAction.setOnEndListener((files, failFiles) -> {
+                            actionMode.finish();
+                            Toast.makeText(this, "Done!", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "Errors: " + failFiles.size(), Toast.LENGTH_SHORT).show();
+                        });
+                        fileAction.start();
+                    })
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
+                    .create()
+                    .show();
+        }
+
+        return true;
+
+    }
+
+    @Override
+    public void onDestroyActionMode(ActionMode mode) {
+        externalStorageAdapter.exitSelectionMode();
+        actionMode = null;
+    }
+
 }

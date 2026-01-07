@@ -1,7 +1,30 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="Base.Theme.Filedroid" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorControlNormal">?attr/colorOnPrimary</item>
+        <item name="colorControlNormal">@color/white</item>
+
+        <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeStyle">@style/custom_action_mode</item>
+        <item name="actionOverflowButtonStyle">@style/custom_action_button_overflow</item>
+        <item name="actionModeCloseButtonStyle">@style/custom_action_mode_close_button</item>
+
+    </style>
+
+    <style name="custom_action_mode_close_button" parent="Widget.AppCompat.ActionButton.CloseMode">
+        <item name="android:tint">?attr/colorOnPrimary</item>
+    </style>
+
+    <style name="custom_action_mode" parent="Widget.AppCompat.ActionMode">
+        <item name="titleTextStyle">@style/custom_action_mode_text</item>
+        <item name="background">?attr/colorPrimary</item>
+    </style>
+
+    <style name="custom_action_button_overflow" parent="Widget.AppCompat.ActionButton.Overflow">
+        <item name="android:tint">?attr/colorOnPrimary</item>
+    </style>
+
+    <style name="custom_action_mode_text" parent="TextAppearance.AppCompat.Widget.ActionMode.Title">
+        <item name="android:textColor">?attr/colorOnPrimary</item>
     </style>
 
     <style name="Theme.Filedroid" parent="Base.Theme.Filedroid" />
