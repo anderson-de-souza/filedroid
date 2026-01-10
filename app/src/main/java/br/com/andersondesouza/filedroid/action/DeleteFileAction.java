@@ -26,15 +26,20 @@ public class DeleteFileAction extends FileAction {
     }
 
     @Override
-    public boolean execute(File file) {
+    public boolean execute(File file, int index) {
+
         if (file != null && file.isDirectory()) {
+
             File[] children = file.listFiles();
+
             if (children != null) {
                 for (File child : children) {
-                    execute(child);
+                    execute(child, index);
                 }
             }
+
         }
+
         return file.delete();
     }
 

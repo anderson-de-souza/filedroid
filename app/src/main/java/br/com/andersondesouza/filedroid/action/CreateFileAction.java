@@ -27,20 +27,22 @@ public class CreateFileAction extends FileAction {
     }
 
     @Override
-    public boolean execute(File file) {;
+    public boolean execute(File file, int index) {;
 
-        File parentDir = new File(file.getParent());
+        if (file != null && !file.exists()) {
 
-        if (!parentDir.exists()) {
-            parentDir.mkdirs();
-        }
+            File parent = file.getParentFile();
 
-        if (!file.exists()) {
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+
             try {
                 return file.createNewFile();
             } catch (IOException exception) {
                 return false;
             }
+
         }
 
         return false;

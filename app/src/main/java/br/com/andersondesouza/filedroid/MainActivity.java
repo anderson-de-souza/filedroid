@@ -12,10 +12,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -39,6 +41,7 @@ import java.util.Collections;
 import br.com.andersondesouza.filedroid.action.CreateDirectoryAction;
 import br.com.andersondesouza.filedroid.action.CreateFileAction;
 import br.com.andersondesouza.filedroid.action.DeleteFileAction;
+import br.com.andersondesouza.filedroid.action.RenameFileAction;
 import br.com.andersondesouza.filedroid.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity implements ActionMode.Callback {
@@ -173,42 +176,40 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
             externalStorageViewModel.backToParent();
         }
 
-        EditTextDialog editTextDialog = null;
-
         if (item.getItemId() == R.id.create_new_file) {
 
-            editTextDialog = new EditTextDialog(R.string.new_file, R.string.hint_new_file);
+            EditTextDialog.createEditTextDialog(R.string.new_file, R.string.hint_new_file, (dialog, editText, which) -> {
 
-            editTextDialog.setOnEditTextDialogClickListener((dialog, editText, which) -> {
                 if (which == DialogInterface.BUTTON_POSITIVE) {
 
-                    File currentDir = externalStorageViewModel.getCurrentDirectory();
+                    File currentDirectory = externalStorageViewModel.getCurrentDirectory();
                     String text = editText.getText().toString();
 
-                    CreateFileAction fileAction = new CreateFileAction(currentDir, text);
+                    CreateFileAction fileAction = new CreateFileAction(currentDirectory, text);
                     fileAction.setOnProgressListener((file, success, percent) -> {
                         if (success) {
                             externalStorageViewModel.updateCurrentDirectory();
                         }
                     });
+
                     fileAction.start();
 
                 } else {
                     dialog.dismiss();
                 }
-            });
+
+            }).show(getSupportFragmentManager(), "create_new_file");
 
         } else if (item.getItemId() == R.id.create_new_directory) {
 
-            editTextDialog = new EditTextDialog(R.string.new_file, R.string.hint_new_directory);
+            EditTextDialog.createEditTextDialog(R.string.new_file, R.string.hint_new_directory, (dialog, editText, which) -> {
 
-            editTextDialog.setOnEditTextDialogClickListener((dialog, editText, which) -> {
                 if (which == DialogInterface.BUTTON_POSITIVE) {
 
-                    File currentDir = externalStorageViewModel.getCurrentDirectory();
+                    File currentDirectory = externalStorageViewModel.getCurrentDirectory();
                     String text = editText.getText().toString();
 
-                    CreateDirectoryAction fileAction = new CreateDirectoryAction(currentDir, text);
+                    CreateDirectoryAction fileAction = new CreateDirectoryAction(currentDirectory, text);
                     fileAction.setOnProgressListener((file, success, percent) -> {
                         if (success) {
                             externalStorageViewModel.updateCurrentDirectory();
@@ -219,12 +220,9 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
                 } else {
                     dialog.dismiss();
                 }
-            });
 
-        }
+            }).show(getSupportFragmentManager(), "create_new_directory");
 
-        if (editTextDialog != null) {
-            editTextDialog.show(getSupportFragmentManager(), "create_new_archive");
         }
 
         return super.onOptionsItemSelected(item);
@@ -266,6 +264,7 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
             externalStorageAdapter.deselectAll();
             mode.invalidate();
         } else if (item.getItemId() == R.id.delete) {
+
             new AlertDialog.Builder(this)
                     .setTitle(R.string.are_you_sure)
                     .setMessage(
@@ -289,6 +288,43 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
                     .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
                     .create()
                     .show();
+
+        } else if (item.getItemId() == R.id.rename) {
+
+            EditTextDialog.createEditTextDialog(R.string.rename_files, R.string.hint_rename_pattern, (dialog, editText, buttonId) -> {
+
+                if (buttonId == DialogInterface.BUTTON_POSITIVE) {
+
+                    new AlertDialog.Builder(this)
+                            .setTitle(R.string.are_you_sure)
+                            .setMessage(
+                                    getResources().getQuantityString(
+                                            R.plurals.rename_selected_items,
+                                            externalStorageAdapter.getSelectedItemCount(),
+                                            externalStorageAdapter.getSelectedItemCount())
+                            )
+                            .setPositiveButton(R.string.yes, (childDialog, which) -> {
+                                RenameFileAction fileAction = new RenameFileAction(externalStorageAdapter.getSelectedItems(), editText.getText().toString(), "{i}");
+                                fileAction.setOnProgressListener((file, success, percent) -> {
+                                    externalStorageViewModel.updateCurrentDirectory();
+                                });
+                                fileAction.setOnEndListener((files, failFiles) -> {
+                                    actionMode.finish();
+                                    Toast.makeText(this, "Done!", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(this, "Errors: " + failFiles.size(), Toast.LENGTH_SHORT).show();
+                                });
+                                fileAction.start();
+                            })
+                            .setNegativeButton(R.string.cancel, (childDialog, which) -> dialog.dismiss())
+                            .create()
+                            .show();
+
+                } else {
+                    dialog.dismiss();
+                }
+
+            }).show(getSupportFragmentManager(), "rename_file");
+
         }
 
         return true;

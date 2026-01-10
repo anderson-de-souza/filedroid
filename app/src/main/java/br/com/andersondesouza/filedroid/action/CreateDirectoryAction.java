@@ -26,8 +26,8 @@ public class CreateDirectoryAction extends FileAction {
     }
 
     @Override
-    public boolean execute(File file) {
-        if (!file.exists()) {
+    public boolean execute(File file, int index) {
+        if (file != null && !file.exists()) {
             return file.mkdirs();
         }
         return false;

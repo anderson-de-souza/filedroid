@@ -66,6 +66,18 @@ public class EditTextDialog extends DialogFragment {
         this.listener = listener;
     }
 
+    public static EditTextDialog createEditTextDialog(String title, String hint, OnEditTextDialogClickListener onEditTextDialogClickListener) {
+        EditTextDialog dialog = new EditTextDialog(title, hint);
+        dialog.setOnEditTextDialogClickListener(onEditTextDialogClickListener);
+        return dialog;
+    }
+
+    public static EditTextDialog createEditTextDialog(int titleResId, int hintResId, OnEditTextDialogClickListener onEditTextDialogClickListener) {
+        EditTextDialog dialog = new EditTextDialog(titleResId, hintResId);
+        dialog.setOnEditTextDialogClickListener(onEditTextDialogClickListener);
+        return dialog;
+    }
+
     public interface OnEditTextDialogClickListener {
         void onEditTextDialogClick(DialogInterface dialog, EditText editText, int which);
     }

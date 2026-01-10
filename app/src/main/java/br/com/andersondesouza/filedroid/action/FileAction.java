@@ -2,6 +2,7 @@ package br.com.andersondesouza.filedroid.action;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -18,7 +19,6 @@ public abstract class FileAction {
     private OnStartListener onStartListener;
     private OnProgressListener onProgressListener;
     private OnEndListener onEndListener;
-
 
     private ExecutorService executorService;
     private Handler mainHandler;
@@ -68,10 +68,10 @@ public abstract class FileAction {
 
                 File file = files.get(i);
 
-                boolean success = false;
+                boolean success;
 
                 try {
-                    success = execute(file);
+                    success = execute(file, i);
                 } catch (Exception exception) {
                     success = false;
                 }
@@ -82,10 +82,7 @@ public abstract class FileAction {
 
                 float percent = (i + 1f) / (files.isEmpty() ? 1f : files.size());
 
-                final boolean successFinal = success;
-                final float percentFinal = percent;
-
-                postOnProgress(file, successFinal, percentFinal);
+                postOnProgress(file, success, percent);
 
             }
 
@@ -115,7 +112,7 @@ public abstract class FileAction {
         }
     }
 
-    public abstract boolean execute(File file);
+    public abstract boolean execute(File file, int index);
 
     public void cancel() {
         this.cancelled = true;
