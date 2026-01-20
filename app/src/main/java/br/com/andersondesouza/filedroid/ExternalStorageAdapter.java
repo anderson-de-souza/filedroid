@@ -28,12 +28,12 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
 
             @Override
             public boolean areItemsTheSame(File oldItem, File newItem) {
-                return oldItem.getName().equals(newItem.getName());
+                return oldItem.equals(newItem);
             }
 
             @Override
             public boolean areContentsTheSame(File oldItem, File newItem) {
-                return true;
+                return oldItem.getName().equals(newItem.getName());
             }
 
         });
@@ -92,6 +92,10 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
             }
             selectedItems.removeAll(getCurrentList());
         }
+    }
+
+    public boolean isSelectionMode() {
+        return isSelectionMode;
     }
 
     public void exitSelectionMode() {

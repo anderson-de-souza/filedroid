@@ -47,6 +47,7 @@ public abstract class FileAction {
     }
 
     public synchronized void start() {
+
         if (started) {
             throw new IllegalStateException("Action already started");
         }
@@ -68,13 +69,7 @@ public abstract class FileAction {
 
                 File file = files.get(i);
 
-                boolean success;
-
-                try {
-                    success = execute(file, i);
-                } catch (Exception exception) {
-                    success = false;
-                }
+                boolean success = execute(file, i);
 
                 if (!success) {
                     failFiles.add(file);
@@ -118,16 +113,19 @@ public abstract class FileAction {
         this.cancelled = true;
     }
 
-    public void setOnStartListener(OnStartListener onStartListener) {
+    public FileAction setOnStartListener(OnStartListener onStartListener) {
         this.onStartListener = onStartListener;
+        return this;
     }
 
-    public void setOnProgressListener(OnProgressListener onProgressListener) {
+    public FileAction setOnProgressListener(OnProgressListener onProgressListener) {
         this.onProgressListener = onProgressListener;
+        return this;
     }
 
-    public void setOnEndListener(OnEndListener onEndListener) {
+    public FileAction setOnEndListener(OnEndListener onEndListener) {
         this.onEndListener = onEndListener;
+        return this;
     }
 
     public interface OnStartListener {

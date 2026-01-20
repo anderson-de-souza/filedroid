@@ -1,4 +1,5 @@
 <resources>
+
     <string name="app_name">Filedroid</string>
     <string name="new_file">New File</string>
     <string name="new_directory">New Directory</string>
@@ -14,6 +15,11 @@
     <string name="rename">Rename</string>
     <string name="are_you_sure">Are you sure?</string>
     <string name="yes">Yes</string>
+
+    <string name="cut">Cut</string>
+    <string name="paste">Paste</string>
+    <string name="move">Move</string>
+    <string name="copy">Copy</string>
 
     <plurals name="selected_items">
         <item quantity="one">%s Item</item>
