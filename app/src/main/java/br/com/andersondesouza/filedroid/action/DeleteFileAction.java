@@ -26,9 +26,8 @@ public class DeleteFileAction extends FileAction {
     }
 
     @Override
-    public boolean execute(File file, int index) {
-
-        if (file != null && file.isDirectory()) {
+    protected boolean execute(File file, int index) {
+        if (file.isDirectory()) {
 
             File[] children = file.listFiles();
 
@@ -39,7 +38,6 @@ public class DeleteFileAction extends FileAction {
             }
 
         }
-
         return file.delete();
     }
 

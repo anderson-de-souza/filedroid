@@ -27,9 +27,8 @@ public class CreateFileAction extends FileAction {
     }
 
     @Override
-    public boolean execute(File file, int index) {;
-
-        if (file != null && !file.exists()) {
+    protected boolean execute(File file, int index) {;
+        if (!file.exists()) {
 
             File parent = file.getParentFile();
 
@@ -44,9 +43,7 @@ public class CreateFileAction extends FileAction {
             }
 
         }
-
         return false;
-
     }
 
 }

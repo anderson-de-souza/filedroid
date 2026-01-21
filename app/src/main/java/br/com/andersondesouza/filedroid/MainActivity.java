@@ -11,14 +11,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
 import android.provider.Settings;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
-import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
@@ -44,7 +41,7 @@ import br.com.andersondesouza.filedroid.action.CopyFileAction;
 import br.com.andersondesouza.filedroid.action.CreateDirectoryAction;
 import br.com.andersondesouza.filedroid.action.CreateFileAction;
 import br.com.andersondesouza.filedroid.action.DeleteFileAction;
-import br.com.andersondesouza.filedroid.action.FileAction;
+import br.com.andersondesouza.filedroid.action.FileActionManager;
 import br.com.andersondesouza.filedroid.action.MoveFileAction;
 import br.com.andersondesouza.filedroid.action.RenameFileAction;
 import br.com.andersondesouza.filedroid.databinding.ActivityMainBinding;
@@ -88,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
 
-            ActivityResultLauncher<Intent> launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), (activityResult) -> {
+            ActivityResultLauncher<Intent> launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), activityResult -> {
                 if (Environment.isExternalStorageManager()) {
                     loadFiles();
                 }
@@ -98,7 +95,7 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
 
         } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
 
-            ActivityResultLauncher<String> launcher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), (state) -> {
+            ActivityResultLauncher<String> launcher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), state -> {
                 if (state) {
                     loadFiles();
                 }
@@ -114,7 +111,7 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_DENIED) {
 
-            ActivityResultLauncher<String> launcher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), (state) -> {
+            ActivityResultLauncher<String> launcher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), state -> {
                 if (state) {
                     NotificationChannel channel = new NotificationChannel(FiledroidApplication.NOTIFICATION_CHANNEL_ID_EXCEPTIONS, "Exceptions", NotificationManager.IMPORTANCE_DEFAULT);
                     NotificationManager manager = getSystemService(NotificationManager.class);
@@ -139,7 +136,6 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
             if (externalStorageAdapter.isSelectionMode()) {
                 fileBuffer.addAll(externalStorageAdapter.getSelectedItems());
                 actionMode.finish();
-
             }
         });
 
@@ -158,45 +154,25 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
 
                 if (binding.itemCopy.isActivated()) {
 
-                    new CopyFileAction(fileBuffer, externalStorageViewModel.getCurrentDirectory())
-                        .setOnStartListener(files -> {
-                            binding.toolbar.setTitle(R.string.app_name);
-                            binding.bottomAppBar.setVisibility(View.GONE);
-                            binding.itemCopy.setActivated(false);
-                        })
-                        .setOnProgressListener((file, success, percent) -> {
-                            externalStorageViewModel.updateCurrentDirectory();
-                        })
-                        .setOnEndListener((files, failFiles) -> {
-                            fileBuffer.clear();
-                            Toast.makeText(this, "Done!", Toast.LENGTH_SHORT).show();
-                            Toast.makeText(this, "Errors: " + failFiles.size(), Toast.LENGTH_SHORT).show();
-                        })
-                        .start();
+                    FileActionManager.addToQueue(new CopyFileAction(fileBuffer, externalStorageViewModel.getCurrentDirectory())
+                        .setOnProgressListener((files, failFiles, file, success) -> externalStorageViewModel.updateCurrentDirectory())
+                        .setOnEndListener((files, failFiles) -> fileBuffer.clear()));
 
                 }
 
                 if (binding.itemCut.isActivated()) {
 
-                    new MoveFileAction(fileBuffer, externalStorageViewModel.getCurrentDirectory())
-                        .setOnStartListener(files -> {
-                            binding.toolbar.setTitle(R.string.app_name);
-                            binding.bottomAppBar.setVisibility(View.GONE);
-                            binding.itemCut.setActivated(false);
-                        })
-                        .setOnProgressListener((file, success, percent) -> {
-                            externalStorageViewModel.updateCurrentDirectory();
-                        })
-                        .setOnEndListener((files, failFiles) -> {
-                            fileBuffer.clear();
-                            Toast.makeText(this, "Done!", Toast.LENGTH_SHORT).show();
-                            Toast.makeText(this, "Errors: " + failFiles.size(), Toast.LENGTH_SHORT).show();
-                        })
-                        .start();
+                    FileActionManager.addToQueue(new MoveFileAction(fileBuffer, externalStorageViewModel.getCurrentDirectory())
+                        .setOnProgressListener((files, failFiles, file, success) -> externalStorageViewModel.updateCurrentDirectory())
+                        .setOnEndListener((files, failFiles) -> fileBuffer.clear()));
 
                 }
 
-                view.setActivated(true);
+                binding.itemCopy.setActivated(false);
+                binding.itemCut.setActivated(false);
+
+                binding.bottomAppBar.setVisibility(View.GONE);
+                binding.toolbar.setTitle(R.string.app_name);
 
             }
 
@@ -216,7 +192,9 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
         });
 
         binding.listView.setHasFixedSize(true);
-        binding.listView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        binding.listView.setLayoutManager(
+            new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
+        );
         binding.listView.setAdapter(externalStorageAdapter);
 
         externalStorageViewModel.observeCurrentDirectory(this, file -> {
@@ -249,7 +227,6 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-
         if (item.getItemId() == android.R.id.home) {
             externalStorageViewModel.backToParent();
         }
@@ -257,21 +234,14 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
         if (item.getItemId() == R.id.create_new_file) {
 
             EditTextDialog.createEditTextDialog(R.string.new_file, R.string.hint_new_file, (dialog, editText, which) -> {
-
                 if (which == DialogInterface.BUTTON_POSITIVE) {
 
-                    File currentDirectory = externalStorageViewModel.getCurrentDirectory();
-                    String text = editText.getText().toString();
-
-                    CreateFileAction fileAction = new CreateFileAction(currentDirectory, text);
-
-                    fileAction.setOnProgressListener((file, success, percent) -> {
-                        if (success) {
-                            externalStorageViewModel.updateCurrentDirectory();
-                        }
-                    });
-
-                    fileAction.start();
+                    FileActionManager.addToQueue(new CreateFileAction(externalStorageViewModel.getCurrentDirectory(), editText.getText().toString())
+                        .setOnProgressListener((files, failFiles, file, success) -> {
+                            if (success) {
+                                externalStorageViewModel.updateCurrentDirectory();
+                            }
+                        }));
 
                 } else {
                     dialog.dismiss();
@@ -282,21 +252,14 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
         } else if (item.getItemId() == R.id.create_new_directory) {
 
             EditTextDialog.createEditTextDialog(R.string.new_file, R.string.hint_new_directory, (dialog, editText, which) -> {
-
                 if (which == DialogInterface.BUTTON_POSITIVE) {
 
-                    File currentDirectory = externalStorageViewModel.getCurrentDirectory();
-                    String text = editText.getText().toString();
-
-                    CreateDirectoryAction fileAction = new CreateDirectoryAction(currentDirectory, text);
-
-                    fileAction.setOnProgressListener((file, success, percent) -> {
-                        if (success) {
-                            externalStorageViewModel.updateCurrentDirectory();
-                        }
-                    });
-
-                    fileAction.start();
+                    FileActionManager.addToQueue(new CreateDirectoryAction(externalStorageViewModel.getCurrentDirectory(), editText.getText().toString())
+                        .setOnProgressListener((files, failFiles, file, success) -> {
+                            if (success) {
+                                externalStorageViewModel.updateCurrentDirectory();
+                            }
+                        }));
 
                 } else {
                     dialog.dismiss();
@@ -305,7 +268,6 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
             }).show(getSupportFragmentManager(), "create_new_directory");
 
         }
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -313,7 +275,6 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
     public boolean onCreateActionMode(ActionMode mode, Menu menu) {
         getMenuInflater().inflate(R.menu.activity_main_action_mode, menu);
         binding.bottomAppBar.setVisibility(View.VISIBLE);
-        binding.itemPaste.setActivated(false);
         return true;
     }
 
@@ -345,28 +306,24 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
         if (item.getItemId() == R.id.select_all) {
             externalStorageAdapter.selectAll();
             mode.invalidate();
-        } else if (item.getItemId() == R.id.deselect_all) {
+        }
+
+        else if (item.getItemId() == R.id.deselect_all) {
             externalStorageAdapter.deselectAll();
             mode.invalidate();
-        } else if (item.getItemId() == R.id.delete) {
+        }
+
+        else if (item.getItemId() == R.id.delete) {
+
+            int count = externalStorageAdapter.getSelectedItemCount();
 
             new AlertDialog.Builder(this)
                 .setTitle(R.string.are_you_sure)
-                .setMessage(
-                    getResources().getQuantityString(
-                        R.plurals.delete_selected_items,
-                        externalStorageAdapter.getSelectedItemCount(),
-                        externalStorageAdapter.getSelectedItemCount())
-                )
+                .setMessage(getResources().getQuantityString(R.plurals.delete_selected_items, count, count))
                 .setPositiveButton(R.string.yes, (dialog, which) -> {
-                    new DeleteFileAction(externalStorageAdapter.getSelectedItems())
-                        .setOnProgressListener((file, success, percent) -> {
-                            externalStorageViewModel.updateCurrentDirectory();
-                        }).setOnEndListener((files, failFiles) -> {
-                            actionMode.finish();
-                            Toast.makeText(this, "Done!", Toast.LENGTH_SHORT).show();
-                            Toast.makeText(this, "Errors: " + failFiles.size(), Toast.LENGTH_SHORT).show();
-                        }).start();
+                    FileActionManager.addToQueue(new DeleteFileAction(externalStorageAdapter.getSelectedItems())
+                        .setOnProgressListener((files, failFiles, file, success) -> externalStorageViewModel.updateCurrentDirectory())
+                        .setOnEndListener((files, failFiles) -> actionMode.finish()));
                 })
                 .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
                 .create()
@@ -378,27 +335,19 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
 
                 if (buttonId == DialogInterface.BUTTON_POSITIVE) {
 
+                    int count = externalStorageAdapter.getSelectedItemCount();
+
                     new AlertDialog.Builder(this)
-                            .setTitle(R.string.are_you_sure)
-                            .setMessage(
-                                    getResources().getQuantityString(
-                                            R.plurals.rename_selected_items,
-                                            externalStorageAdapter.getSelectedItemCount(),
-                                            externalStorageAdapter.getSelectedItemCount())
-                            )
-                            .setPositiveButton(R.string.yes, (childDialog, which) -> {
-                                new RenameFileAction(externalStorageAdapter.getSelectedItems(), editText.getText().toString(), "{i}")
-                                        .setOnProgressListener((file, success, percent) -> {
-                                            externalStorageViewModel.updateCurrentDirectory();
-                                        }).setOnEndListener((files, failFiles) -> {
-                                            actionMode.finish();
-                                            Toast.makeText(this, "Done!", Toast.LENGTH_SHORT).show();
-                                            Toast.makeText(this, "Errors: " + failFiles.size(), Toast.LENGTH_SHORT).show();
-                                        }).start();
-                            })
-                            .setNegativeButton(R.string.cancel, (childDialog, which) -> dialog.dismiss())
-                            .create()
-                            .show();
+                        .setTitle(R.string.are_you_sure)
+                        .setMessage(getResources().getQuantityString(R.plurals.rename_selected_items, count, count))
+                        .setPositiveButton(R.string.yes, (childDialog, which) -> {
+                            FileActionManager.addToQueue(new RenameFileAction(externalStorageAdapter.getSelectedItems(), editText.getText().toString(), "{i}")
+                                .setOnProgressListener((files, failFiles, file, success) -> externalStorageViewModel.updateCurrentDirectory())
+                                .setOnEndListener((files, failFiles) -> actionMode.finish()));
+                        })
+                        .setNegativeButton(R.string.cancel, (childDialog, which) -> dialog.dismiss())
+                        .create()
+                        .show();
 
                 } else {
                     dialog.dismiss();
@@ -407,24 +356,20 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
             }).show(getSupportFragmentManager(), "rename_file");
 
         }
-
         return true;
-
     }
 
     @Override
     public void onDestroyActionMode(ActionMode mode) {
-
         externalStorageAdapter.exitSelectionMode();
 
         if (!fileBuffer.isEmpty()) {
-            binding.toolbar.setTitle("Does It Paste Here?");
-        } else if (fileBuffer.isEmpty()) {
+            binding.toolbar.setTitle(R.string.does_it_paste_here);
+        } else {
             binding.bottomAppBar.setVisibility(View.GONE);
         }
 
         actionMode = null;
-
     }
 
 }

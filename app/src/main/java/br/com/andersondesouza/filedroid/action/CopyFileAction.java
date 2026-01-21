@@ -37,24 +37,15 @@ public class CopyFileAction extends FileAction {
     }
 
     @Override
-    public boolean execute(File file, int index) {
-
-        if (file != null && file.isDirectory()) {
-            boolean i = copyDirectoryTree(file, targetDirectory);
-            Log.d("executedir", "filename:" + file.getName());
-            return i;
-
+    protected boolean execute(File file, int index) {
+        if (file.isDirectory()) {
+            return copyDirectoryTree(file, targetDirectory);
         } else {
-            boolean i = copy(file, new File(targetDirectory, file.getName()));
-            Log.d("executefile", "filename:" + file.getName());
-            return i;
-
+            return copy(file, new File(targetDirectory, file.getName()));
         }
-
     }
 
     private boolean copyDirectoryTree(File origin, File targetDirectory) {
-
         File target = new File(targetDirectory, origin.getName());
 
         if (!target.isDirectory()) {
@@ -64,7 +55,6 @@ public class CopyFileAction extends FileAction {
         File[] children = origin.listFiles();
 
         if (children != null) {
-
             for (File child: children) {
 
                 boolean success;
@@ -80,20 +70,15 @@ public class CopyFileAction extends FileAction {
                 }
 
             }
-
         }
-
         return true;
-
     }
 
     private boolean copy(File origin, File target) {
-
         FileInputStream inputStream = null;
         FileOutputStream outputStream = null;
 
         try {
-
             inputStream = new FileInputStream(origin);
             outputStream = new FileOutputStream(target);
 
@@ -105,11 +90,9 @@ public class CopyFileAction extends FileAction {
             }
 
         } catch (IOException exception) {
-            Log.d("CopyError", exception.getMessage());
             return false;
 
         } finally {
-
             try {
 
                 if (inputStream != null) {
@@ -121,17 +104,14 @@ public class CopyFileAction extends FileAction {
 
             } catch (IOException e) {
                 return false;
-
             }
 
         }
-
         return true;
-
     }
 
     private void checkTargetDirectory() {
-        if (!targetDirectory.isDirectory()) {
+        if (targetDirectory != null && !targetDirectory.isDirectory()) {
             throw new RuntimeException("Invalid Target Directory");
         }
     }

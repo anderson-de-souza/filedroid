@@ -15,7 +15,7 @@
     <string name="rename">Rename</string>
     <string name="are_you_sure">Are you sure?</string>
     <string name="yes">Yes</string>
-
+    <string name="does_it_paste_here">Does It Paste Here?</string>
     <string name="cut">Cut</string>
     <string name="paste">Paste</string>
     <string name="move">Move</string>

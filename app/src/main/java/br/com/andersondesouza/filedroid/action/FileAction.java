@@ -1,15 +1,8 @@
 package br.com.andersondesouza.filedroid.action;
 
-import android.os.Handler;
-import android.os.Looper;
-import android.util.Log;
-
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public abstract class FileAction {
 
@@ -20,14 +13,9 @@ public abstract class FileAction {
     private OnProgressListener onProgressListener;
     private OnEndListener onEndListener;
 
-    private ExecutorService executorService;
-    private Handler mainHandler;
-
-    private boolean started;
     private volatile boolean cancelled;
 
     public FileAction() {
-        this.files = Collections.EMPTY_LIST;
     }
 
     public FileAction(List<File> files) {
@@ -46,68 +34,54 @@ public abstract class FileAction {
         this.files = List.of(new File(parent, child));
     }
 
-    public synchronized void start() {
+    public void start() {
+        postOnStart(files);
 
-        if (started) {
-            throw new IllegalStateException("Action already started");
-        }
+        for (int i = 0; i < files.size(); i++) {
 
-        started = true;
-
-        executorService = Executors.newSingleThreadExecutor();
-        mainHandler = new Handler(Looper.getMainLooper());
-
-        executorService.execute(() -> {
-
-            postOnStart(files);
-
-            for (int i = 0; i < files.size(); i++) {
-
-                if (cancelled) {
-                    break;
-                }
-
-                File file = files.get(i);
-
-                boolean success = execute(file, i);
-
-                if (!success) {
-                    failFiles.add(file);
-                }
-
-                float percent = (i + 1f) / (files.isEmpty() ? 1f : files.size());
-
-                postOnProgress(file, success, percent);
-
+            if (cancelled) {
+                break;
             }
 
-            postOnEnd(files, failFiles);
+            File file = files.get(i);
+            boolean success = false;
 
-            executorService.shutdown();
+            if (file != null) {
+                success = execute(file, i);
+            }
 
-        });
+            if (!success) {
+                failFiles.add(file);
+            }
 
+            postOnProgress(file, success);
+        }
+
+        postOnEnd();
     }
 
     private void postOnStart(List<File> files) {
         if (onStartListener != null) {
-            mainHandler.post(() -> onStartListener.onStart(files));
+            FileActionManager.getMainThreadHandler()
+                .post(() -> onStartListener.onStart(files));
         }
     }
 
-    private void postOnProgress(File file, boolean success, float percent) {
+    private void postOnProgress(File file, boolean success) {
         if (onProgressListener != null) {
-            mainHandler.post(() -> onProgressListener.onProgress(file, success, percent));
+            FileActionManager.getMainThreadHandler()
+                .post(() -> onProgressListener.onProgress(files, failFiles, file, success));
         }
     }
 
-    private void postOnEnd(List<File> files, List<File> failFiles) {
+    private void postOnEnd() {
         if (onEndListener != null) {
-            mainHandler.post(() -> onEndListener.onEnd(files, failFiles));
+            FileActionManager.getMainThreadHandler()
+                .post(() -> onEndListener.onEnd(files, failFiles));
         }
     }
 
-    public abstract boolean execute(File file, int index);
+    protected abstract boolean execute(File file, int index);
 
     public void cancel() {
         this.cancelled = true;
@@ -133,7 +107,7 @@ public abstract class FileAction {
     }
 
     public interface OnProgressListener {
-        void onProgress(File file, boolean success, float percent);
+        void onProgress(List<File> files, List<File> failFiles, File file, boolean success);
     }
 
     public interface OnEndListener {

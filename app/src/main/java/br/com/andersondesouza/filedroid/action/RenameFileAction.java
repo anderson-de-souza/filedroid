@@ -2,8 +2,6 @@ package br.com.andersondesouza.filedroid.action;
 
 import java.io.File;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class RenameFileAction extends FileAction {
 
@@ -39,27 +37,19 @@ public class RenameFileAction extends FileAction {
     }
 
     @Override
-    public boolean execute(File file, int index) {
+    protected boolean execute(File file, int index) {
+        File patternFile = new File(pattern.replace(placeholder, Integer.toString(index)));
+        File parent = file.getParentFile();
 
-        if (file != null) {
+        File target;
 
-            File patternFile = new File(pattern.replace(placeholder, Integer.toString(index)));
-
-            File parent = file.getParentFile();
-
-            File target;
-            if (parent == null) {
-                target = new File(patternFile.getName());
-            } else {
-                target = new File(parent, patternFile.getName());
-            }
-
-            return file.renameTo(target);
-
+        if (parent == null) {
+            target = new File(patternFile.getName());
+        } else {
+            target = new File(parent, patternFile.getName());
         }
 
-        return false;
-
+        return file.renameTo(target);
     }
 
 }

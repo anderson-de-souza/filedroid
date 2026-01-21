@@ -35,7 +35,7 @@ public class MoveFileAction extends FileAction {
     }
 
     @Override
-    public boolean execute(File file, int index) {
+    protected boolean execute(File file, int index) {
         if (copyFileAction.execute(file, index)) {
             if (deleteFileAction.execute(file, index)) {
                 return true;
