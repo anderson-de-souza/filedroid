@@ -9,24 +9,14 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 
 import java.io.File;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class ExternalStorageViewModel extends AndroidViewModel {
 
     private final File externalStorage = Environment.getExternalStorageDirectory();
-    private MutableLiveData<File> currentDirLiveData = new MutableLiveData<>(externalStorage);
-
-    private ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private MutableLiveData<File> currentDirectoryLiveData = new MutableLiveData<>(externalStorage);
 
     public ExternalStorageViewModel(Application app) {
         super(app);
-    }
-
-    @Override
-    protected void onCleared() {
-        super.onCleared();
-        executorService.shutdown();
     }
 
     public File getExternalStorage() {
@@ -34,13 +24,13 @@ public class ExternalStorageViewModel extends AndroidViewModel {
     }
 
     public File getCurrentDirectory() {
-        return currentDirLiveData.getValue();
+        return currentDirectoryLiveData.getValue();
     }
 
-    public void updateCurrentDirectory(File currentDir) {
-        if (currentDir != null && currentDir.isDirectory() &&
-                !currentDir.equals(externalStorage.getParentFile())) {
-            currentDirLiveData.postValue(currentDir);
+    public void updateCurrentDirectory(File currentDirectory) {
+        if (currentDirectory != null && currentDirectory.isDirectory() &&
+                !currentDirectory.equals(externalStorage.getParentFile())) {
+            currentDirectoryLiveData.postValue(currentDirectory);
         }
     }
 
@@ -57,7 +47,7 @@ public class ExternalStorageViewModel extends AndroidViewModel {
     }
 
     public void observeCurrentDirectory(LifecycleOwner owner, Observer<File> observer) {
-        currentDirLiveData.observe(owner, observer);
+        currentDirectoryLiveData.observe(owner, observer);
     }
 
 }

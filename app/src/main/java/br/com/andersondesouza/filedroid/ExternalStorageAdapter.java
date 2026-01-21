@@ -44,6 +44,7 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
         if (parent != null && inflater == null) {
             inflater = LayoutInflater.from(parent.getContext());
         }
+
         ViewHolderFileBinding binding = ViewHolderFileBinding.inflate(inflater, parent, false);
         FileViewHolder holder = new FileViewHolder(binding);
         return holder;
@@ -86,10 +87,13 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
 
     public void deselectAll() {
         if (isSelectionMode) {
+
             List<File> currentList = getCurrentList();
+
             for (File file: selectedItems) {
                 notifyItemChanged(currentList.indexOf(file));
             }
+
             selectedItems.removeAll(getCurrentList());
         }
     }
@@ -148,7 +152,6 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
             });
 
             this.binding.getRoot().setOnLongClickListener(view -> {
-
                 if (!isSelectionMode) {
                     isSelectionMode = true;
 
@@ -178,7 +181,6 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
             }
 
             binding.fileNameView.setText(file.getName());
-
         }
 
         private void toggleItemCardColor() {

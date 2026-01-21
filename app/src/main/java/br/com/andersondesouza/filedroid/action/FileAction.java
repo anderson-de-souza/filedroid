@@ -34,11 +34,10 @@ public abstract class FileAction {
         this.files = List.of(new File(parent, child));
     }
 
-    public void start() {
+    protected void start() {
         postOnStart(files);
 
         for (int i = 0; i < files.size(); i++) {
-
             if (cancelled) {
                 break;
             }
@@ -56,7 +55,6 @@ public abstract class FileAction {
 
             postOnProgress(file, success);
         }
-
         postOnEnd();
     }
 

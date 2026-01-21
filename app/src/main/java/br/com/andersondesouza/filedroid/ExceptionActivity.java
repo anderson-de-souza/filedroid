@@ -46,6 +46,5 @@ public class ExceptionActivity extends AppCompatActivity {
         binding.messageView.setText(getIntent().getStringExtra("message"));
         binding.stackTraceView.setMovementMethod(new ScrollingMovementMethod());
         binding.stackTraceView.setText(getIntent().getStringExtra("stackTrace"));
-
     }
 }

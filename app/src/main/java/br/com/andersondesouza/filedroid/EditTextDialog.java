@@ -12,13 +12,14 @@ import br.com.andersondesouza.filedroid.databinding.DialogEditTextBinding;
 
 public class EditTextDialog extends DialogFragment {
 
+    private DialogEditTextBinding binding;
+    private OnEditTextDialogClickListener listener;
+
     private String title = "";
     private String hint = "";
 
     private int titleResId;
     private int hintResId;
-
-    private OnEditTextDialogClickListener listener;
 
     public EditTextDialog(String title, String hint) {
         this.title = title;
@@ -32,19 +33,20 @@ public class EditTextDialog extends DialogFragment {
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
-        DialogEditTextBinding binding = DialogEditTextBinding.inflate(getLayoutInflater());
+        binding = DialogEditTextBinding.inflate(getLayoutInflater());
+
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext())
-                .setView(binding.getRoot())
-                .setPositiveButton(R.string.done, (dialog, which) -> {
-                    if (listener != null) {
-                        listener.onEditTextDialogClick(dialog, binding.editText, which);
-                    }
-                })
-                .setNegativeButton(R.string.cancel, (dialog, which) -> {
-                    if (listener != null) {
-                        listener.onEditTextDialogClick(dialog, binding.editText, which);
-                    }
-                });
+            .setView(binding.getRoot())
+            .setPositiveButton(R.string.done, (dialog, which) -> {
+                if (listener != null) {
+                    listener.onEditTextDialogClick(dialog, binding.editText, which);
+                }
+            })
+            .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                if (listener != null) {
+                    listener.onEditTextDialogClick(dialog, binding.editText, which);
+                }
+            });
 
         if (titleResId != 0) {
             builder.setTitle(titleResId);
@@ -59,7 +61,6 @@ public class EditTextDialog extends DialogFragment {
         }
 
         return builder.create();
-
     }
 
     public void setOnEditTextDialogClickListener(OnEditTextDialogClickListener listener) {

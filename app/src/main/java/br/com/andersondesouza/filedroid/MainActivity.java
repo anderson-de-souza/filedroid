@@ -104,9 +104,7 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
             launcher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
         } else {
-
             loadFiles();
-
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_DENIED) {

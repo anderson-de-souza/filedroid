@@ -17,13 +17,13 @@ import java.io.StringWriter;
 
 public class FiledroidApplication extends Application {
 
+    private static final Thread.UncaughtExceptionHandler defaultUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
+
     public static final String NOTIFICATION_CHANNEL_ID_EXCEPTIONS = "exceptions";
 
     @Override
     public void onCreate() {
         super.onCreate();
-
-        final Thread.UncaughtExceptionHandler defaultUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
 
         Thread.setDefaultUncaughtExceptionHandler((thread, exception) -> {
             String stackTrace = stackTraceToString(exception);
@@ -45,7 +45,6 @@ public class FiledroidApplication extends Application {
     }
 
     private String stackTraceToString(Throwable exception) {
-
         StringWriter stringWriter = new StringWriter();
         PrintWriter printWriter = new PrintWriter(stringWriter);
 
@@ -54,9 +53,7 @@ public class FiledroidApplication extends Application {
         } while ((exception = exception.getCause()) != null);
 
         String result = stringWriter.toString();
-
         return result;
-
     }
 
 }
