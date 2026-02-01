@@ -8,12 +8,11 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-import android.widget.Toast;
-
-import androidx.annotation.NonNull;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+
+import br.com.andersondesouza.filedroid.receiver.ExceptionReceiver;
 
 public class FiledroidApplication extends Application {
 

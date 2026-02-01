@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid.action;
+package br.com.andersondesouza.filedroid.fileaction;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -6,13 +6,17 @@ import java.util.List;
 
 public abstract class FileAction {
 
+    private static final Object loopBlocker = new Object();
+
     private List<File> files;
     private List<File> failFiles = new ArrayList<>();
 
     private OnStartListener onStartListener;
     private OnProgressListener onProgressListener;
+    private OnFileConflictListener onFileConflictListener;
     private OnEndListener onEndListener;
 
+    private volatile boolean paused;
     private volatile boolean cancelled;
 
     public FileAction() {
@@ -34,7 +38,7 @@ public abstract class FileAction {
         this.files = List.of(new File(parent, child));
     }
 
-    protected void start() {
+    protected void execute() {
         postOnStart(files);
 
         for (int i = 0; i < files.size(); i++) {
@@ -46,7 +50,7 @@ public abstract class FileAction {
             boolean success = false;
 
             if (file != null) {
-                success = execute(file, i);
+                success = process(file, i);
             }
 
             if (!success) {
@@ -60,29 +64,60 @@ public abstract class FileAction {
 
     private void postOnStart(List<File> files) {
         if (onStartListener != null) {
-            FileActionManager.getMainThreadHandler()
-                .post(() -> onStartListener.onStart(files));
+            FileActionManager.runOnMainThread(() -> onStartListener.onStart(files));
         }
     }
 
     private void postOnProgress(File file, boolean success) {
         if (onProgressListener != null) {
-            FileActionManager.getMainThreadHandler()
-                .post(() -> onProgressListener.onProgress(files, failFiles, file, success));
+            FileActionManager.runOnMainThread(() -> onProgressListener.onProgress(files, failFiles, file, success));
+        }
+    }
+
+    protected void postOnFileConflict(File origin, File targetDirectory) {
+        if (onFileConflictListener != null) {
+            FileActionManager.runOnMainThread(() -> onFileConflictListener.onFileConflict(this, origin, targetDirectory));
         }
     }
 
     private void postOnEnd() {
         if (onEndListener != null) {
-            FileActionManager.getMainThreadHandler()
-                .post(() -> onEndListener.onEnd(files, failFiles));
+            FileActionManager.runOnMainThread(() -> onEndListener.onEnd(files, failFiles));
         }
     }
 
-    protected abstract boolean execute(File file, int index);
+    protected abstract boolean process(File file, int index);
 
     public void cancel() {
         this.cancelled = true;
+    }
+
+    public boolean isCancelled() {
+        return cancelled;
+    }
+
+    public void pause() {
+        synchronized (loopBlocker) {
+            paused = true;
+            while (paused) {
+                try {
+                    loopBlocker.wait();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    public void resume() {
+        synchronized (loopBlocker) {
+            paused = false;
+            loopBlocker.notifyAll();
+        }
+    }
+
+    public boolean isPaused() {
+        return paused;
     }
 
     public FileAction setOnStartListener(OnStartListener onStartListener) {
@@ -90,14 +125,35 @@ public abstract class FileAction {
         return this;
     }
 
+    public OnStartListener getOnStartListener() {
+        return onStartListener;
+    }
+
     public FileAction setOnProgressListener(OnProgressListener onProgressListener) {
         this.onProgressListener = onProgressListener;
         return this;
     }
 
+    public OnProgressListener getOnProgressListener() {
+        return onProgressListener;
+    }
+
+    public FileAction setOnFileConflictListener(OnFileConflictListener onFileConflictListener) {
+        this.onFileConflictListener = onFileConflictListener;
+        return this;
+    }
+
+    public OnFileConflictListener getOnFileConflictListener() {
+        return onFileConflictListener;
+    }
+
     public FileAction setOnEndListener(OnEndListener onEndListener) {
         this.onEndListener = onEndListener;
         return this;
+    }
+
+    public OnEndListener getOnEndListener() {
+        return onEndListener;
     }
 
     public interface OnStartListener {
@@ -106,6 +162,10 @@ public abstract class FileAction {
 
     public interface OnProgressListener {
         void onProgress(List<File> files, List<File> failFiles, File file, boolean success);
+    }
+
+    public interface OnFileConflictListener {
+        void onFileConflict(FileAction fileAction, File origin, File targetDirectory);
     }
 
     public interface OnEndListener {

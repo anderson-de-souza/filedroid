@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid;
+package br.com.andersondesouza.filedroid.dialog;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -7,7 +7,9 @@ import android.os.Bundle;
 import android.widget.EditText;
 
 import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentManager;
 
+import br.com.andersondesouza.filedroid.R;
 import br.com.andersondesouza.filedroid.databinding.DialogEditTextBinding;
 
 public class EditTextDialog extends DialogFragment {
@@ -39,12 +41,12 @@ public class EditTextDialog extends DialogFragment {
             .setView(binding.getRoot())
             .setPositiveButton(R.string.done, (dialog, which) -> {
                 if (listener != null) {
-                    listener.onEditTextDialogClick(dialog, binding.editText, which);
+                    listener.onEditTextDialogClick(dialog, which, binding.editText);
                 }
             })
             .setNegativeButton(R.string.cancel, (dialog, which) -> {
                 if (listener != null) {
-                    listener.onEditTextDialogClick(dialog, binding.editText, which);
+                    listener.onEditTextDialogClick(dialog, which, binding.editText);
                 }
             });
 
@@ -67,6 +69,10 @@ public class EditTextDialog extends DialogFragment {
         this.listener = listener;
     }
 
+    public interface OnEditTextDialogClickListener {
+        void onEditTextDialogClick(DialogInterface dialog, int which, EditText editText);
+    }
+
     public static EditTextDialog createEditTextDialog(String title, String hint, OnEditTextDialogClickListener onEditTextDialogClickListener) {
         EditTextDialog dialog = new EditTextDialog(title, hint);
         dialog.setOnEditTextDialogClickListener(onEditTextDialogClickListener);
@@ -79,8 +85,16 @@ public class EditTextDialog extends DialogFragment {
         return dialog;
     }
 
-    public interface OnEditTextDialogClickListener {
-        void onEditTextDialogClick(DialogInterface dialog, EditText editText, int which);
+    public static void showEditTextDialog(FragmentManager fragmentManager, String title, String hint, OnEditTextDialogClickListener onEditTextDialogClickListener) {
+        EditTextDialog dialog = new EditTextDialog(title, hint);
+        dialog.setOnEditTextDialogClickListener(onEditTextDialogClickListener);
+        dialog.show(fragmentManager, "edittextdialog");
+    }
+
+    public static void showEditTextDialog(FragmentManager fragmentManager, int titleResId, int hintResId, OnEditTextDialogClickListener onEditTextDialogClickListener) {
+        EditTextDialog dialog = new EditTextDialog(titleResId, hintResId);
+        dialog.setOnEditTextDialogClickListener(onEditTextDialogClickListener);
+        dialog.show(fragmentManager, "edittextdialog");
     }
 
 }

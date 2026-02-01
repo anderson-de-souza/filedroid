@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid;
+package br.com.andersondesouza.filedroid.adapter;
 
 import android.graphics.Color;
 import android.view.LayoutInflater;
@@ -12,16 +12,22 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import br.com.andersondesouza.filedroid.R;
 import br.com.andersondesouza.filedroid.databinding.ViewHolderFileBinding;
 
 public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAdapter.FileViewHolder> {
 
     private LayoutInflater inflater;
-    private OnItemClickListener onItemClickListener;
 
-    private boolean isSelectionMode = false;
-    private List<File> selectedItems = new ArrayList<File>();
+    private boolean selectionMode = false;
+    private boolean blockedSelectionMode = false;
+
+    private List<File> selectedItems = new ArrayList<>();
+
+    private OnItemClickListener onItemClickListener;
+    private OnSelectionModeStartListener onSelectionModeStartListener;
     private OnItemSelectedListener onItemSelectedListener;
+    private OnSelectionModeEndListener onSelectionModeEndListener;
 
     public ExternalStorageAdapter() {
         super(new DiffUtil.ItemCallback<File>() {
@@ -59,6 +65,21 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
         return getItem(position);
     }
 
+    public void submitSelectedItems(List<File> items) {
+        if (selectionMode) {
+            selectedItems.clear();
+            selectedItems.addAll(items);
+
+            for (int i = 0; i < selectedItems.size(); i++) {
+                int index = getCurrentList().indexOf(selectedItems.get(i));
+                if (index != -1) {
+                    notifyItemChanged(index);
+                }
+            }
+
+        }
+    }
+
     public List<File> getSelectedItems() {
         return selectedItems;
     }
@@ -76,9 +97,10 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
     }
 
     public void selectAll() {
-        if (isSelectionMode) {
+        if (selectionMode) {
             selectedItems.clear();
             selectedItems.addAll(getCurrentList());
+
             for (int i = 0; i < getItemCount(); i++) {
                 notifyItemChanged(i);
             }
@@ -86,33 +108,60 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
     }
 
     public void deselectAll() {
-        if (isSelectionMode) {
-
+        if (selectionMode) {
             List<File> currentList = getCurrentList();
-
             for (File file: selectedItems) {
                 notifyItemChanged(currentList.indexOf(file));
             }
+            selectedItems.clear();
 
-            selectedItems.removeAll(getCurrentList());
+            selectionMode = false;
+            if (onSelectionModeEndListener != null) {
+                onSelectionModeEndListener.onSelectionModeEnd(this);
+            }
         }
     }
 
+    public void setBlockedSelectionMode(boolean blockedSelectionMode) {
+        this.blockedSelectionMode = blockedSelectionMode;
+    }
+
+    public boolean isBlockedSelectionMode() {
+        return blockedSelectionMode;
+    }
+
     public boolean isSelectionMode() {
-        return isSelectionMode;
+        return selectionMode;
     }
 
     public void exitSelectionMode() {
-        deselectAll();
-        isSelectionMode = false;
+        if (selectionMode) {
+            deselectAll();
+            selectionMode = false;
+            if (onSelectionModeEndListener != null) {
+                onSelectionModeEndListener.onSelectionModeEnd(this);
+            }
+        }
     }
 
-    public void setOnItemClickListener(OnItemClickListener onItemClickListener) {
+    public ExternalStorageAdapter setOnItemClickListener(OnItemClickListener onItemClickListener) {
         this.onItemClickListener = onItemClickListener;
+        return this;
     }
 
-    public void setOnItemSelectedListener(OnItemSelectedListener onItemSelectedListener) {
+    public ExternalStorageAdapter setOnSelectionModeStartListener(OnSelectionModeStartListener onSelectionModeStartListener) {
+        this.onSelectionModeStartListener = onSelectionModeStartListener;
+        return this;
+    }
+
+    public ExternalStorageAdapter setOnItemSelectedListener(OnItemSelectedListener onItemSelectedListener) {
         this.onItemSelectedListener = onItemSelectedListener;
+        return this;
+    }
+
+    public ExternalStorageAdapter setOnSelectionModeEndListener(OnSelectionModeEndListener onSelectionModeEndListener) {
+        this.onSelectionModeEndListener = onSelectionModeEndListener;
+        return this;
     }
 
     public class FileViewHolder extends RecyclerView.ViewHolder {
@@ -125,11 +174,11 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
             this.binding = binding;
 
             this.binding.getRoot().setOnClickListener(view -> {
-                if (!isSelectionMode && onItemClickListener != null) {
+                if (!selectionMode && onItemClickListener != null) {
                     onItemClickListener.onItemClick(this);
                 }
 
-                if (isSelectionMode) {
+                if (selectionMode && !blockedSelectionMode) {
 
                     if (!selectedItems.contains(file)) {
                         selectedItems.add(file);
@@ -140,11 +189,15 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
                     }
 
                     if (onItemSelectedListener != null) {
-                        onItemSelectedListener.onItemSelected(selectedItems, file);
+                        onItemSelectedListener.onItemSelected(ExternalStorageAdapter.this, this, selectedItems, file);
                     }
 
                     if (selectedItems.isEmpty()) {
-                        isSelectionMode = false;
+                        selectionMode = false;
+
+                        if (onSelectionModeEndListener != null) {
+                            onSelectionModeEndListener.onSelectionModeEnd(ExternalStorageAdapter.this);
+                        }
                     }
 
                 }
@@ -152,14 +205,18 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
             });
 
             this.binding.getRoot().setOnLongClickListener(view -> {
-                if (!isSelectionMode) {
-                    isSelectionMode = true;
+                if (!selectionMode && !blockedSelectionMode) {
+                    selectionMode = true;
+
+                    if (onSelectionModeStartListener != null) {
+                        onSelectionModeStartListener.onSelectionModeStart(ExternalStorageAdapter.this);
+                    }
 
                     selectedItems.add(file);
                     binding.cardView.setCardBackgroundColor(Color.LTGRAY);
 
                     if (onItemSelectedListener != null) {
-                        onItemSelectedListener.onItemSelected(selectedItems, file);
+                        onItemSelectedListener.onItemSelected(ExternalStorageAdapter.this, this, selectedItems, file);
                     }
 
                 }
@@ -201,8 +258,16 @@ public class ExternalStorageAdapter extends ListAdapter<File, ExternalStorageAda
         void onItemClick(FileViewHolder viewHolder);
     }
 
+    public interface OnSelectionModeStartListener {
+        void onSelectionModeStart(ExternalStorageAdapter adapter);
+    }
+
     public interface OnItemSelectedListener {
-        void onItemSelected(List<File> selectedItems, File itemChanged);
+        void onItemSelected(ExternalStorageAdapter adapter, FileViewHolder viewHolder, List<File> selectedItems, File itemChanged);
+    }
+
+    public interface OnSelectionModeEndListener {
+        void onSelectionModeEnd(ExternalStorageAdapter adapter);
     }
 
 }

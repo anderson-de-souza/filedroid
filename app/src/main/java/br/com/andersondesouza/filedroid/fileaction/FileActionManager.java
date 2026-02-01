@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid.action;
+package br.com.andersondesouza.filedroid.fileaction;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -26,7 +26,7 @@ public class FileActionManager {
     public void add(FileAction action) {
         if (fileActions.add(action)) {
             executorService.execute(() -> {
-                action.start();
+                action.execute();
                 fileActions.remove(action);
             });
         }
@@ -46,12 +46,17 @@ public class FileActionManager {
     public static void addToQueue(FileAction action) {
         getInstance().add(action);
     }
+
     public static void cancelAction(FileAction action) {
         getInstance().cancel(action);
     }
 
-    public static void instanceShutdown() {
+    public static void terminate() {
         getInstance().shutdown();
+    }
+
+    public static void runOnMainThread(Runnable task) {
+        getMainThreadHandler().post(task);
     }
 
     public static FileActionManager getInstance() {

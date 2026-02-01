@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid.action;
+package br.com.andersondesouza.filedroid.fileaction;
 
 import java.io.File;
 import java.util.List;
@@ -35,13 +35,18 @@ public class MoveFileAction extends FileAction {
     }
 
     @Override
-    protected boolean execute(File file, int index) {
-        if (copyFileAction.execute(file, index)) {
-            if (deleteFileAction.execute(file, index)) {
+    protected boolean process(File file, int index) {
+        if (copyFileAction.process(file, index)) {
+            if (deleteFileAction.process(file, index)) {
                 return true;
             }
         }
         return false;
+    }
+
+    public FileAction setOnFileConflictListener(OnFileConflictListener listener) {
+        copyFileAction.setOnFileConflictListener(listener);
+        return this;
     }
 
 }

@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid;
+package br.com.andersondesouza.filedroid.receiver;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -6,9 +6,12 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
+
+import br.com.andersondesouza.filedroid.FiledroidApplication;
+import br.com.andersondesouza.filedroid.R;
+import br.com.andersondesouza.filedroid.activity.ExceptionActivity;
 
 public class ExceptionReceiver extends BroadcastReceiver {
 

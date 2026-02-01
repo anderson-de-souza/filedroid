@@ -18,11 +18,11 @@
         android:theme="@style/Theme.Filedroid">
 
         <activity
-            android:name=".ExceptionActivity"
+            android:name=".activity.ExceptionActivity"
             android:exported="false" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".activity.MainActivity"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -31,7 +31,7 @@
         </activity>
 
         <receiver
-            android:name=".ExceptionReceiver"
+            android:name=".receiver.ExceptionReceiver"
             android:exported="false" />
 
     </application>

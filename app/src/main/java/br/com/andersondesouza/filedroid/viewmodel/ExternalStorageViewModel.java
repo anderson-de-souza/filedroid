@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid;
+package br.com.andersondesouza.filedroid.viewmodel;
 
 import android.app.Application;
 import android.os.Environment;

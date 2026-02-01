@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid;
+package br.com.andersondesouza.filedroid.activity;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -32,19 +32,17 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
-import br.com.andersondesouza.filedroid.action.CopyFileAction;
-import br.com.andersondesouza.filedroid.action.CreateDirectoryAction;
-import br.com.andersondesouza.filedroid.action.CreateFileAction;
-import br.com.andersondesouza.filedroid.action.DeleteFileAction;
-import br.com.andersondesouza.filedroid.action.FileActionManager;
-import br.com.andersondesouza.filedroid.action.MoveFileAction;
-import br.com.andersondesouza.filedroid.action.RenameFileAction;
+import br.com.andersondesouza.filedroid.FiledroidApplication;
+import br.com.andersondesouza.filedroid.R;
+import br.com.andersondesouza.filedroid.adapter.ExternalStorageAdapter;
 import br.com.andersondesouza.filedroid.databinding.ActivityMainBinding;
+import br.com.andersondesouza.filedroid.dialog.EditTextDialog;
+import br.com.andersondesouza.filedroid.viewmodel.ExternalStorageViewModel;
+import br.com.andersondesouza.filedroid.viewmodel.FileBufferViewModel;
 
 public class MainActivity extends AppCompatActivity implements ActionMode.Callback {
 
@@ -52,9 +50,9 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
     private ActionMode actionMode;
 
     private ExternalStorageViewModel externalStorageViewModel;
-    private ExternalStorageAdapter externalStorageAdapter;
+    private FileBufferViewModel fileBufferViewModel;
 
-    private List<File> fileBuffer = new ArrayList<>();
+    private ExternalStorageAdapter externalStorageAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +78,11 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
         new WindowInsetsControllerCompat(window, decorView)
                 .setAppearanceLightStatusBars(false);
 
-        externalStorageViewModel = new ViewModelProvider(this).get(ExternalStorageViewModel.class);
+        ViewModelProvider viewModelProvider = new ViewModelProvider(this);
+
+        externalStorageViewModel = viewModelProvider.get(ExternalStorageViewModel.class);
+        fileBufferViewModel = viewModelProvider.get(FileBufferViewModel.class);
+
         externalStorageAdapter = new ExternalStorageAdapter();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
@@ -124,95 +126,70 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
         getOnBackPressedDispatcher().addCallback(new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                externalStorageViewModel.backToParent();
+                if (!fileBufferViewModel.isEmptyFileBuffer() && externalStorageViewModel.isRoot()) {
+                    fileBufferViewModel.clearFileBuffer();
+                    externalStorageAdapter.setBlockedSelectionMode(false);
+                } else {
+                    externalStorageViewModel.backToParent();
+                }
             }
         });
 
         binding.itemCopy.setOnClickListener(view -> {
-            view.setActivated(true);
-            binding.itemCut.setActivated(false);
-            if (externalStorageAdapter.isSelectionMode()) {
-                fileBuffer.addAll(externalStorageAdapter.getSelectedItems());
-                actionMode.finish();
-            }
+            onBottomAppBarItemClick(view);
         });
 
         binding.itemCut.setOnClickListener(view -> {
-            view.setActivated(true);
-            binding.itemCopy.setActivated(false);
-            if (externalStorageAdapter.isSelectionMode()) {
-                fileBuffer.addAll(externalStorageAdapter.getSelectedItems());
-                actionMode.finish();
-            }
+            onBottomAppBarItemClick(view);
         });
 
         binding.itemPaste.setOnClickListener(view -> {
+            onBottomAppBarItemClick(view);
+        });
 
-            if (!externalStorageAdapter.isSelectionMode()) {
-
-                if (binding.itemCopy.isActivated()) {
-
-                    FileActionManager.addToQueue(new CopyFileAction(fileBuffer, externalStorageViewModel.getCurrentDirectory())
-                        .setOnProgressListener((files, failFiles, file, success) -> externalStorageViewModel.updateCurrentDirectory())
-                        .setOnEndListener((files, failFiles) -> fileBuffer.clear()));
-
-                }
-
-                if (binding.itemCut.isActivated()) {
-
-                    FileActionManager.addToQueue(new MoveFileAction(fileBuffer, externalStorageViewModel.getCurrentDirectory())
-                        .setOnProgressListener((files, failFiles, file, success) -> externalStorageViewModel.updateCurrentDirectory())
-                        .setOnEndListener((files, failFiles) -> fileBuffer.clear()));
-
-                }
-
-                binding.itemCopy.setActivated(false);
-                binding.itemCut.setActivated(false);
-
-                binding.bottomAppBar.setVisibility(View.GONE);
-                binding.toolbar.setTitle(R.string.app_name);
-
-            }
-
+        fileBufferViewModel.observeFileBuffer(this, fileBuffer -> {
+            updateToolbar();
+            finishBottomAppBar();
+            finishSupportActionMode();
         });
 
     }
 
     private void loadFiles() {
 
-        externalStorageAdapter.setOnItemClickListener(holder -> externalStorageViewModel.updateCurrentDirectory(holder.getFile()));
-        externalStorageAdapter.setOnItemSelectedListener((selectedItems, itemChanged) -> {
-            if (actionMode == null) {
-                actionMode = startSupportActionMode(this);
-            } else {
-                actionMode.invalidate();
-            }
+        externalStorageAdapter.setOnItemClickListener(holder -> {
+            externalStorageViewModel.updateCurrentDirectory(holder.getFile());
+        })
+
+        .setOnSelectionModeStartListener(adapter -> {
+            startSupportActionMode();
+            startBottomAppBar();
+        })
+
+        .setOnItemSelectedListener((adapter, viewHolder, selectedItems, itemChanged) -> {
+            updateSupportActionMode();
+        })
+
+        .setOnSelectionModeEndListener(adapter -> {
+            finishSupportActionMode();
+            finishBottomAppBar();
         });
 
         binding.listView.setHasFixedSize(true);
-        binding.listView.setLayoutManager(
-            new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
-        );
+        binding.listView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         binding.listView.setAdapter(externalStorageAdapter);
 
         externalStorageViewModel.observeCurrentDirectory(this, file -> {
-
             File[] children = file.listFiles();
 
             if (children != null) {
                 externalStorageAdapter.submitList(Arrays.asList(children));
             } else {
-                externalStorageAdapter.submitList(Collections.EMPTY_LIST);
+                externalStorageAdapter.submitList(new ArrayList<>());
             }
 
-            if (!externalStorageViewModel.isRoot()) {
-                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            } else {
-                getSupportActionBar().setDisplayHomeAsUpEnabled(false);
-            }
-
+            enableHomeAsUp();
             binding.pathView.setText(file.getPath());
-
         });
 
     }
@@ -226,110 +203,103 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
-            externalStorageViewModel.backToParent();
+            if (!fileBufferViewModel.isEmptyFileBuffer() && externalStorageViewModel.isRoot()) {
+                fileBufferViewModel.clearFileBuffer();
+                externalStorageAdapter.setBlockedSelectionMode(false);
+            } else {
+                externalStorageViewModel.backToParent();
+            }
         }
 
         if (item.getItemId() == R.id.create_new_file) {
 
-            EditTextDialog.createEditTextDialog(R.string.new_file, R.string.hint_new_file, (dialog, editText, which) -> {
+            EditTextDialog.showEditTextDialog(getSupportFragmentManager(), R.string.new_file, R.string.hint_new_file, (dialog, which, editText) -> {
                 if (which == DialogInterface.BUTTON_POSITIVE) {
+                    File file = new File(externalStorageViewModel.getCurrentDirectory(), editText.getText().toString());
 
-                    FileActionManager.addToQueue(new CreateFileAction(externalStorageViewModel.getCurrentDirectory(), editText.getText().toString())
-                        .setOnProgressListener((files, failFiles, file, success) -> {
-                            if (success) {
-                                externalStorageViewModel.updateCurrentDirectory();
-                            }
-                        }));
+                    if (!file.exists()) {
+                        File parent = file.getParentFile();
 
+                        if (parent != null && !parent.exists()) {
+                            parent.mkdirs();
+                        }
+
+                        try {
+                            file.createNewFile();
+                            externalStorageViewModel.updateCurrentDirectory();
+                        } catch (IOException exception) {
+                        }
+
+                    }
                 } else {
                     dialog.dismiss();
                 }
-
-            }).show(getSupportFragmentManager(), "create_new_file");
+            });
 
         } else if (item.getItemId() == R.id.create_new_directory) {
 
-            EditTextDialog.createEditTextDialog(R.string.new_file, R.string.hint_new_directory, (dialog, editText, which) -> {
+            EditTextDialog.showEditTextDialog(getSupportFragmentManager(), R.string.new_file, R.string.hint_new_directory, (dialog, which, editText) -> {
                 if (which == DialogInterface.BUTTON_POSITIVE) {
-
-                    FileActionManager.addToQueue(new CreateDirectoryAction(externalStorageViewModel.getCurrentDirectory(), editText.getText().toString())
-                        .setOnProgressListener((files, failFiles, file, success) -> {
-                            if (success) {
-                                externalStorageViewModel.updateCurrentDirectory();
-                            }
-                        }));
-
+                    File file = new File(externalStorageViewModel.getCurrentDirectory(), editText.getText().toString());
+                    if (!file.isDirectory()) {
+                        file.mkdirs();
+                        externalStorageViewModel.updateCurrentDirectory();
+                    }
                 } else {
                     dialog.dismiss();
                 }
-
-            }).show(getSupportFragmentManager(), "create_new_directory");
+            });
 
         }
         return super.onOptionsItemSelected(item);
     }
 
     @Override
-    public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+    public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
         getMenuInflater().inflate(R.menu.activity_main_action_mode, menu);
-        binding.bottomAppBar.setVisibility(View.VISIBLE);
         return true;
     }
 
     @Override
-    public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-
-        mode.setTitle(
-            getResources().getQuantityString(
-                R.plurals.selected_items,
-                externalStorageAdapter.getSelectedItemCount(),
-                externalStorageAdapter.getSelectedItemCount()
-            )
-        );
-
+    public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
+        actionMode.setTitle(getResources().getQuantityString(
+            R.plurals.selected_items,
+            externalStorageAdapter.getSelectedItemCount(),
+            externalStorageAdapter.getSelectedItemCount()
+        ));
         menu.findItem(R.id.select_all).setVisible(!externalStorageAdapter.areAllItemsSelected());
         menu.findItem(R.id.deselect_all).setVisible(externalStorageAdapter.areAllItemsSelected());
-
-        if (externalStorageAdapter.hasNoSelectedItems()) {
-            actionMode.finish();
-        }
-
         return true;
-
     }
 
     @Override
-    public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-
+    public boolean onActionItemClicked(ActionMode actionMode, MenuItem item) {
         if (item.getItemId() == R.id.select_all) {
             externalStorageAdapter.selectAll();
-            mode.invalidate();
-        }
+            actionMode.invalidate();
 
-        else if (item.getItemId() == R.id.deselect_all) {
+        } else if (item.getItemId() == R.id.deselect_all) {
             externalStorageAdapter.deselectAll();
-            mode.invalidate();
-        }
+            actionMode.invalidate();
 
-        else if (item.getItemId() == R.id.delete) {
-
+        } else if (item.getItemId() == R.id.delete) {
             int count = externalStorageAdapter.getSelectedItemCount();
 
             new AlertDialog.Builder(this)
                 .setTitle(R.string.are_you_sure)
                 .setMessage(getResources().getQuantityString(R.plurals.delete_selected_items, count, count))
                 .setPositiveButton(R.string.yes, (dialog, which) -> {
-                    FileActionManager.addToQueue(new DeleteFileAction(externalStorageAdapter.getSelectedItems())
-                        .setOnProgressListener((files, failFiles, file, success) -> externalStorageViewModel.updateCurrentDirectory())
-                        .setOnEndListener((files, failFiles) -> actionMode.finish()));
+
                 })
                 .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
                 .create()
                 .show();
 
         } else if (item.getItemId() == R.id.rename) {
-
-            EditTextDialog.createEditTextDialog(R.string.rename_files, R.string.hint_rename_pattern, (dialog, editText, buttonId) -> {
+            EditTextDialog.showEditTextDialog(
+                    getSupportFragmentManager(),
+                    R.string.rename_files, R.string.hint_rename_pattern,
+                    (dialog, buttonId, editText) -> {
 
                 if (buttonId == DialogInterface.BUTTON_POSITIVE) {
 
@@ -339,9 +309,7 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
                         .setTitle(R.string.are_you_sure)
                         .setMessage(getResources().getQuantityString(R.plurals.rename_selected_items, count, count))
                         .setPositiveButton(R.string.yes, (childDialog, which) -> {
-                            FileActionManager.addToQueue(new RenameFileAction(externalStorageAdapter.getSelectedItems(), editText.getText().toString(), "{i}")
-                                .setOnProgressListener((files, failFiles, file, success) -> externalStorageViewModel.updateCurrentDirectory())
-                                .setOnEndListener((files, failFiles) -> actionMode.finish()));
+
                         })
                         .setNegativeButton(R.string.cancel, (childDialog, which) -> dialog.dismiss())
                         .create()
@@ -351,7 +319,7 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
                     dialog.dismiss();
                 }
 
-            }).show(getSupportFragmentManager(), "rename_file");
+            });
 
         }
         return true;
@@ -359,15 +327,76 @@ public class MainActivity extends AppCompatActivity implements ActionMode.Callba
 
     @Override
     public void onDestroyActionMode(ActionMode mode) {
+        actionMode = null;
         externalStorageAdapter.exitSelectionMode();
+    }
 
-        if (!fileBuffer.isEmpty()) {
-            binding.toolbar.setTitle(R.string.does_it_paste_here);
-        } else {
+    private void resetBottomAppBar() {
+        binding.itemCopy.setActivated(false);
+        binding.itemCut.setActivated(false);
+        binding.itemPaste.setActivated(false);
+    }
+
+    private void startBottomAppBar() {
+        resetBottomAppBar();
+        if (binding.bottomAppBar.getVisibility() != View.VISIBLE) {
+            binding.bottomAppBar.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void finishBottomAppBar() {
+        if (binding.bottomAppBar.getVisibility() != View.GONE && fileBufferViewModel.isEmptyFileBuffer()) {
+            resetBottomAppBar();
             binding.bottomAppBar.setVisibility(View.GONE);
         }
-
-        actionMode = null;
     }
+
+    private void updateBottomAppBar(View view) {
+        binding.itemCopy.setActivated(view.equals(binding.itemCopy) && !view.isActivated());
+        binding.itemCut.setActivated(view.equals(binding.itemCut) && !view.isActivated());
+    }
+
+    private void startSupportActionMode() {
+        if (actionMode == null) {
+            actionMode = startSupportActionMode(this);
+        }
+    }
+
+    private void updateSupportActionMode() {
+        if (actionMode != null) {
+            actionMode.invalidate();
+        }
+    }
+
+    private void finishSupportActionMode() {
+        if (actionMode != null) {
+            actionMode.finish();
+        }
+    }
+
+    private void onBottomAppBarItemClick(View view) {
+        updateBottomAppBar(view);
+        if (view.isActivated() && externalStorageAdapter.isSelectionMode()) {
+            fileBufferViewModel.updateFileBuffer(externalStorageAdapter.getSelectedItems());
+            externalStorageAdapter.setBlockedSelectionMode(true);
+        } else if (view.equals(binding.itemPaste)){
+            fileBufferViewModel.clearFileBuffer();
+            externalStorageAdapter.setBlockedSelectionMode(false);
+        }
+    }
+
+    private void updateToolbar() {
+        if (fileBufferViewModel.isEmptyFileBuffer()) {
+            binding.toolbar.setTitle(R.string.app_name);
+        } else {
+            binding.toolbar.setTitle(R.string.does_it_paste_here);
+        }
+        enableHomeAsUp();
+    }
+
+    private void enableHomeAsUp() {
+        getSupportActionBar().setDisplayHomeAsUpEnabled(!externalStorageViewModel.isRoot() || !fileBufferViewModel.isEmptyFileBuffer());
+    }
+
 
 }

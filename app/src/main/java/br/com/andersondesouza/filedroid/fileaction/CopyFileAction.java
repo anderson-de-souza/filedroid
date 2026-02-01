@@ -1,6 +1,4 @@
-package br.com.andersondesouza.filedroid.action;
-
-import android.util.Log;
+package br.com.andersondesouza.filedroid.fileaction;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -37,7 +35,7 @@ public class CopyFileAction extends FileAction {
     }
 
     @Override
-    protected boolean execute(File file, int index) {
+    protected boolean process(File file, int index) {
         if (file.isDirectory()) {
             return copyDirectoryTree(file, targetDirectory);
         } else {
@@ -46,6 +44,13 @@ public class CopyFileAction extends FileAction {
     }
 
     private boolean copyDirectoryTree(File origin, File targetDirectory) {
+        if (targetDirectory.isDirectory()) {
+            postOnFileConflict(origin, targetDirectory);
+            if (getOnFileConflictListener() != null) {
+                pause();
+            }
+        }
+
         File target = new File(targetDirectory, origin.getName());
 
         if (!target.isDirectory()) {
@@ -75,6 +80,13 @@ public class CopyFileAction extends FileAction {
     }
 
     private boolean copy(File origin, File target) {
+        if (target.isFile()) {
+            postOnFileConflict(origin, targetDirectory);
+            if (getOnFileConflictListener() != null) {
+                pause();
+            }
+        }
+
         FileInputStream inputStream = null;
         FileOutputStream outputStream = null;
 

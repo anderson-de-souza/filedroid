@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid.action;
+package br.com.andersondesouza.filedroid.fileaction;
 
 import java.io.File;
 import java.util.List;
@@ -37,16 +37,23 @@ public class RenameFileAction extends FileAction {
     }
 
     @Override
-    protected boolean execute(File file, int index) {
+    protected boolean process(File file, int index) {
         File patternFile = new File(pattern.replace(placeholder, Integer.toString(index)));
-        File parent = file.getParentFile();
 
+        File parent = file.getParentFile();
         File target;
 
         if (parent == null) {
             target = new File(patternFile.getName());
         } else {
             target = new File(parent, patternFile.getName());
+        }
+
+        if (target.exists()) {
+            postOnFileConflict(file, target);
+            if (getOnFileConflictListener() != null) {
+                pause();
+            }
         }
 
         return file.renameTo(target);

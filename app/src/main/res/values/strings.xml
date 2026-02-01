@@ -20,6 +20,13 @@
     <string name="paste">Paste</string>
     <string name="move">Move</string>
     <string name="copy">Copy</string>
+    
+    <string name="file_conflict">File Conflict</string>
+    <string name="origin_colon">Origin:</string>
+    <string name="target_colon">Target:</string>
+    <string name="do_the_same_with_all_the_files">Do the same with all the files</string>
+    <string name="overwrite">Overwrite</string>
+    <string name="skip">Skip</string>
 
     <plurals name="selected_items">
         <item quantity="one">%s Item</item>

@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid.action;
+package br.com.andersondesouza.filedroid.fileaction;
 
 import java.io.File;
 import java.util.List;
@@ -26,14 +26,14 @@ public class DeleteFileAction extends FileAction {
     }
 
     @Override
-    protected boolean execute(File file, int index) {
+    protected boolean process(File file, int index) {
         if (file.isDirectory()) {
 
             File[] children = file.listFiles();
 
             if (children != null) {
                 for (File child : children) {
-                    execute(child, index);
+                    process(child, index);
                 }
             }
 

@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid;
+package br.com.andersondesouza.filedroid.activity;
 
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
@@ -13,7 +13,6 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import br.com.andersondesouza.filedroid.databinding.ActivityExceptionBinding;
-import br.com.andersondesouza.filedroid.databinding.ActivityMainBinding;
 
 public class ExceptionActivity extends AppCompatActivity {
 
