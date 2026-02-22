@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid.fileaction;
+package br.com.andersondesouza.filedroid.file;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -18,6 +18,7 @@ public abstract class FileAction {
 
     private volatile boolean paused;
     private volatile boolean cancelled;
+    private volatile boolean skipped;
 
     public FileAction() {
     }
@@ -64,13 +65,13 @@ public abstract class FileAction {
 
     private void postOnStart(List<File> files) {
         if (onStartListener != null) {
-            FileActionManager.runOnMainThread(() -> onStartListener.onStart(files));
+            FileActionManager.runOnMainThread(() -> onStartListener.onStart(this, files));
         }
     }
 
     private void postOnProgress(File file, boolean success) {
         if (onProgressListener != null) {
-            FileActionManager.runOnMainThread(() -> onProgressListener.onProgress(files, failFiles, file, success));
+            FileActionManager.runOnMainThread(() -> onProgressListener.onProgress(this, files, failFiles, file, success));
         }
     }
 
@@ -82,7 +83,7 @@ public abstract class FileAction {
 
     private void postOnEnd() {
         if (onEndListener != null) {
-            FileActionManager.runOnMainThread(() -> onEndListener.onEnd(files, failFiles));
+            FileActionManager.runOnMainThread(() -> onEndListener.onEnd(this, files, failFiles));
         }
     }
 
@@ -98,7 +99,9 @@ public abstract class FileAction {
 
     public void pause() {
         synchronized (loopBlocker) {
+
             paused = true;
+
             while (paused) {
                 try {
                     loopBlocker.wait();
@@ -106,6 +109,7 @@ public abstract class FileAction {
                     throw new RuntimeException(e);
                 }
             }
+
         }
     }
 
@@ -156,12 +160,24 @@ public abstract class FileAction {
         return onEndListener;
     }
 
+    public enum State {
+        RESUME,
+        PAUSED,
+        CANCELLED
+    }
+
+    public enum Result {
+        SUCCESS,
+        FAILLED,
+        SKIPPED
+    }
+
     public interface OnStartListener {
-        void onStart(List<File> files);
+        void onStart(FileAction fileAction, List<File> files);
     }
 
     public interface OnProgressListener {
-        void onProgress(List<File> files, List<File> failFiles, File file, boolean success);
+        void onProgress(FileAction fileAction, List<File> files, List<File> failFiles, File file, boolean success);
     }
 
     public interface OnFileConflictListener {
@@ -169,7 +185,7 @@ public abstract class FileAction {
     }
 
     public interface OnEndListener {
-        void onEnd(List<File> files, List<File> failFiles);
+        void onEnd(FileAction fileAction, List<File> files, List<File> failFiles);
     }
 
 }

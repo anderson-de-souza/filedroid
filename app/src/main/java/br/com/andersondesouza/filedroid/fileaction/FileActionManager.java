@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid.fileaction;
+package br.com.andersondesouza.filedroid.file;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -11,9 +11,9 @@ import java.util.concurrent.Executors;
 
 public class FileActionManager {
 
-    private static FileActionManager instance;
-
     private static final Handler mainThreadHandler = new Handler(Looper.getMainLooper());
+
+    private static FileActionManager instance;
 
     private ExecutorService executorService;
     private Set<FileAction> fileActions;
@@ -39,24 +39,18 @@ public class FileActionManager {
     }
 
     public void shutdown() {
-        executorService.shutdown();
+        if (executorService != null) {
+            executorService.shutdown();
+        }
         instance = null;
-    }
-
-    public static void addToQueue(FileAction action) {
-        getInstance().add(action);
-    }
-
-    public static void cancelAction(FileAction action) {
-        getInstance().cancel(action);
-    }
-
-    public static void terminate() {
-        getInstance().shutdown();
     }
 
     public static void runOnMainThread(Runnable task) {
         getMainThreadHandler().post(task);
+    }
+
+    public static Handler getMainThreadHandler() {
+        return mainThreadHandler;
     }
 
     public static FileActionManager getInstance() {
@@ -66,7 +60,4 @@ public class FileActionManager {
         return instance;
     }
 
-    public static Handler getMainThreadHandler() {
-        return mainThreadHandler;
-    }
 }

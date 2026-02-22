@@ -1,4 +1,4 @@
-package br.com.andersondesouza.filedroid.fileaction;
+package br.com.andersondesouza.filedroid.file;
 
 import java.io.File;
 import java.util.List;
