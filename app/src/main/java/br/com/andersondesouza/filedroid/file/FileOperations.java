@@ -44,6 +44,10 @@ public class FileOperations {
             return Results.NULL_ARGUMENT;
         }
 
+        if (!origin.exists()) {
+            return Results.NOT_FOUND;
+        }
+
         if (!origin.isFile()) {
             return  Results.NOT_A_FILE;
         }
