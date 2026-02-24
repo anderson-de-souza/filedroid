@@ -125,10 +125,8 @@ public class FileOperations {
 
         File parent = destination.getParentFile();
 
-        if (parent != null && !parent.exists()) {
-            if (!parent.mkdirs()) {
-                return Results.IO_ERROR;
-            }
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            return Results.IO_ERROR;
         }
 
         try (FileInputStream inputStream = new FileInputStream(origin);
@@ -159,14 +157,10 @@ public class FileOperations {
             return Results.NOT_A_DIRECTORY;
         }
 
-        if (destination.exists()) {
-            if (!destination.isDirectory()) {
-                return Results.ALREADY_EXISTS;
-            }
-        } else {
-            if (!destination.mkdirs()) {
-                return Results.IO_ERROR;
-            }
+        if (destination.exists() && !destination.isDirectory()) {
+            return Results.ALREADY_EXISTS;
+        } else if (!destination.mkdirs()) {
+            return Results.IO_ERROR;
         }
 
         File[] children = origin.listFiles();
@@ -207,26 +201,26 @@ public class FileOperations {
     }
 
     public static Results moveFile(File origin, File destination) {
-        if (!(copyFile(origin, destination, false) == Results.OK)) {
+        if (copyFile(origin, destination, false) != Results.OK) {
             return Results.COPY_ERROR;
         }
-        if (!(deleteRegularFile(origin) == Results.OK)) {
+        if (deleteRegularFile(origin) != Results.OK) {
             return Results.DELETE_ERROR;
         }
         return Results.OK;
     }
 
     public static Results moveDirectoryTree(File origin, File destination) {
-        if (!(copyDirectoryTree(origin, destination) == Results.OK)) {
+        if (copyDirectoryTree(origin, destination) != Results.OK) {
             return Results.COPY_ERROR;
         }
-        if (!(deleteDirectoryTree(origin) == Results.OK)) {
+        if (deleteDirectoryTree(origin) != Results.OK) {
             return Results.DELETE_ERROR;
         }
         return Results.OK;
     }
 
-    public enum Results {
+    public static enum Results {
         OK,
         NULL_ARGUMENT,
         NOT_FOUND,
